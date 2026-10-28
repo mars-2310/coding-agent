@@ -1,3 +1,11 @@
+# - collect_tools() -> list: combines every module's tools list
+# - agent_node(state) -> dict: calls the LLM, which has the tools bound
+# - should_continue(state) -> str: router that returns "tools", "replan" or END
+# - build_graph() -> CompiledGraph: nodes are planner → agent ⇄ ToolNode
+# - main(): reads user input, runs graph.invoke() or .stream(), prints the result
+# - Guard it with if __name__ == "__main__": main()
+
+
 from langgraph.graph import StateGraph, START, END
 from typing import TypedDict, Annotated
 from langchain_ollama import ChatOllama
