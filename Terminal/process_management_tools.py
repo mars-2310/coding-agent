@@ -37,11 +37,13 @@ def _format(processes: list[dict]) -> str:
 
 @tool(parse_docstring=True)
 def ps(name_filter: str | None = None, limit: int = 50) -> str:
-    """List running processes with their PID, parent PID, user, CPU and memory use.
+    """List running processes, with each one's PID, parent PID, owner, CPU %, memory % and command.
+
+    Use name_filter to find a specific program, e.g. 'python' or 'node', and get its PID for kill. Without a filter there can be hundreds of processes, so the list is cut at limit, with a note saying how many were left out.
 
     Args:
         name_filter: Only show processes whose command contains this text, ignoring case.
-        limit: Maximum number of processes to return.
+        limit: Maximum number of processes to return. Defaults to 50.
     """
     processes = _list_processes()
     if isinstance(processes, str):
@@ -61,10 +63,12 @@ def ps(name_filter: str | None = None, limit: int = 50) -> str:
 
 @tool(parse_docstring=True)
 def top(count: int = 10, sort_by: Literal["cpu", "memory"] = "cpu") -> str:
-    """Show the processes using the most CPU or memory right now.
+    """Show the processes using the most CPU or memory right now, highest first.
+
+    Use this when the machine is slow or a program seems stuck, to see what is using resources. The values are a snapshot of this moment, not an average over time. Same columns as ps.
 
     Args:
-        count: Number of processes to show.
+        count: Number of processes to show. Defaults to 10.
         sort_by: Rank processes by 'cpu' or 'memory' use.
     """
     processes = _list_processes()
@@ -78,11 +82,13 @@ def top(count: int = 10, sort_by: Literal["cpu", "memory"] = "cpu") -> str:
 
 @tool(parse_docstring=True)
 def kill(pid: int, force: bool = False) -> str:
-    """Stop a running process by its process ID. Use ps to find the PID first.
+    """Stop a running process by its PID. Find the PID with ps first, and only stop processes the task requires, such as a dev server or script the agent started.
+
+    By default the process is asked to exit cleanly (SIGTERM), which lets it save its work; use force only if that doesn't work. Refuses to stop PID 1, the agent itself, or processes owned by other users. Returns once the signal is sent, so check with ps whether the process actually exited.
 
     Args:
-        pid: Process ID to stop.
-        force: If false, ask the process to exit cleanly (SIGTERM). If true, stop it immediately (SIGKILL).
+        pid: Process ID, from ps.
+        force: Stop the process immediately (SIGKILL) instead of asking it to exit. It gets no chance to clean up.
     """
     if pid <= 1:
         return f"Error: refusing to stop system process {pid}"

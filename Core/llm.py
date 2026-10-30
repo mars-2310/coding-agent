@@ -10,6 +10,10 @@ from pydantic import BaseModel
 
 DEFAULT_MODEL = "qwen3"
 
+# Ollama's default context window can be as small as 4096 tokens, and the tool descriptions alone
+# take several thousand. 16k leaves room for the conversation and still fits in 16 GB of RAM.
+CONTEXT_WINDOW = 16384
+
 def get_llm(model: str = DEFAULT_MODEL) -> BaseChatModel:
     """
     Initialize and return a local chat model through Ollama.
@@ -24,12 +28,14 @@ def get_llm(model: str = DEFAULT_MODEL) -> BaseChatModel:
         return ChatOllama(
             model='qwen3:8b',
             temperature=0.2,
+            num_ctx=CONTEXT_WINDOW,
             reasoning=False,  # skip the <think> phase for faster, cleaner tool calls
         )
     if model == "qwen-coder":
         return ChatOllama(
             model='qwen2.5-coder:7b',
-            temperature=0.2
+            temperature=0.2,
+            num_ctx=CONTEXT_WINDOW,
         )
 
     raise ValueError(

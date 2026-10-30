@@ -9,11 +9,13 @@ HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.\-:]*$")
 
 @tool(parse_docstring=True)
 def ping(host: str, count: int = 4) -> str:
-    """Check whether a network host is reachable and how long replies take.
+    """Check whether a network host is reachable and how long it takes to respond.
+
+    Sends a few pings and returns the ping command's output, including packet loss and round-trip times. Use this to diagnose network problems, e.g. whether a server or the internet can be reached. Some hosts block ping, so getting no reply doesn't always mean the host is down. Anything other than a plain hostname or IP address is rejected.
 
     Args:
-        host: Hostname or IP address, e.g. 'google.com' or '8.8.8.8'.
-        count: Number of pings to send, from 1 to 10.
+        host: Hostname or IP address, e.g. 'google.com', 'localhost' or '8.8.8.8'.
+        count: Number of pings to send, from 1 to 10. Defaults to 4.
     """
     if not HOST_PATTERN.match(host):
         return f"Error: invalid host: {host!r}"
@@ -25,7 +27,9 @@ def ping(host: str, count: int = 4) -> str:
 
 @tool
 def ipconfig() -> str:
-    """Show this machine's network interfaces and their IP addresses."""
+    """Show this machine's network interfaces and the IPv4 and IPv6 addresses assigned to each.
+
+    Use this to find the machine's local IP address, or to check whether it is connected to a network. On macOS, interfaces without an address are left out; 'lo0' is the loopback interface (127.0.0.1) and 'en0' is usually Wi-Fi or Ethernet."""
     system = platform.system()
 
     if system == "Windows":
@@ -53,7 +57,9 @@ def ipconfig() -> str:
 
 @tool(parse_docstring=True)
 def netstat(listening_only: bool = True) -> str:
-    """List network ports and connections on this machine.
+    """List network ports on this machine.
+
+    By default, shows the TCP ports that programs are listening on, with the program name and PID on macOS. Use this to find what is using a port, e.g. 8000, or to check that a dev server started. Set listening_only to false to list every open connection instead, which can be a long list.
 
     Args:
         listening_only: If true, show only ports that programs are listening on. If false, show all connections.
