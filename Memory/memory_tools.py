@@ -11,9 +11,12 @@ import re
 from datetime import date
 from langchain_core.tools import tool
 from Core.workspace import get_workspace
+from Core.schemas import TodoItem
+from pydantic import ValidationError
 
 # Facts survive between runs in a JSON file inside the workspace.
 MEMORY_FILE = get_workspace() / ".agent" / "memory.json"
+TODO_FILE = get_workspace() / ".agent" / "todo.json"
 
 def _load_facts() -> list[dict]:
     try:
@@ -94,5 +97,61 @@ def ask_user(question: str) -> str:
     return answer or "The user gave no answer"
 
 
-# Add todo_write, todo_read and finish here once you've written them.
-tools = [remember, recall, ask_user]
+@tool(parse_docstring=True)
+def todo_write(items: list[TodoItem]) -> str:
+    """Replace the entire working checklist with the supplied tasks.
+
+    Use this for tasks with three or more steps. Update task statuses as work
+    progresses and provide the complete checklist on every call.
+
+    Args:
+        items: The complete list of tasks, including IDs, descriptions,
+            statuses, and optional plan step IDs.
+    """
+    TODO_FILE.parent.mkdir(parents=True, exist_ok=True)
+    TODO_FILE.write_text(
+        json.dumps(
+            [item.model_dump(mode="json") for item in items],
+            indent=2,
+        )
+    )
+    return f"Saved {len(items)} todo items."
+
+
+@tool(parse_docstring=True)
+def todo_read() -> str:
+    """Read the saved checklist as formatted text.
+
+    Use this to review task statuses and identify unfinished work.
+    Returns 'No todos yet.' if the checklist is missing, empty, or invalid.
+    """
+    try:
+        data = json.loads(TODO_FILE.read_text())
+        items = [TodoItem.model_validate(item) for item in data]
+    except (FileNotFoundError, json.JSONDecodeError, ValidationError, TypeError):
+        return "No todos yet."
+
+    if not items:
+        return "No todos yet."
+
+    return "\n".join(
+        f"[{item.status}] {item.task_id}. {item.description}"
+        + (f" (step {item.step_id})" if item.step_id is not None else "")
+        for item in items
+    )
+
+
+@tool(parse_docstring=True)
+def finish(summary: str) -> str:
+    """Signal that the agent has finished its task.
+
+    Call this only as the final step, once the work is complete and verified.
+    Do not call it while required tasks remain unfinished.
+
+    Args:
+        summary: A concise summary of completed work and any remaining issues.
+    """
+    return f"Task finished: {summary}"
+
+
+tools = [remember, recall, ask_user, todo_read, todo_write, finish]
